@@ -1,0 +1,98 @@
+# jellyfin-app.yaml
+
+# app deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin-deployment
+  labels:
+    app: jellyfin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jellyfin
+  template:
+    metadata:
+      labels:
+        app: jellyfin
+    spec:
+      # ovdje pinamo na worker server
+      nodeSelector:
+        kubernetes.io/hostname: ubuntu-k8s-worker-3
+
+      containers:
+      - name: jellyfin
+        image: lscr.io/linuxserver/jellyfin:latest
+        ports:
+        - containerPort: 8096 # Jellyfin default port
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Europe/Sarajevo"
+        volumeMounts:
+        - name: jellyfin-config
+          mountPath: /config # parh unutar kontejnera
+        - name: jellyfin-media
+          mountPath: /data   # path unutar kontejnera za library
+      
+      # hostpath volumes
+      volumes:
+      - name: jellyfin-config
+        hostPath:
+          # path za config
+          path: /mnt/media_storage/jellyfin_config
+          type: Directory
+      - name: jellyfin-media
+        hostPath:
+          # path za datu
+          path: /mnt/media_storage/jellyfin_data
+          type: Directory
+
+---
+
+# servis
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-service
+spec:
+  type: ClusterIP
+  selector:
+    app: jellyfin # ovo je vazno za linkanje servisa i troubleshooting
+  ports:
+  - protocol: TCP
+    port: 8096
+    targetPort: 8096
+
+---
+
+# ingress rules
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jellyfin-ingress
+  annotations:
+    # Use nginx ingress class
+    kubernetes.io/ingress.class: "nginx"
+    # cert-manager za certifikat
+    cert-manager.io/cluster-issuer: "letsencrypt-cloudflare-issuer"
+spec:
+  tls:
+  - hosts:
+    - jellyfin.nhukovic.com # URL
+    secretName: jellyfin-tls-secret # cert-manager secret
+  rules:
+  - host: "jellyfin.nhukovic.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: jellyfin-service # za rutiranje na ostala mjesta
+            port:
+              number: 8096

@@ -1,0 +1,22 @@
+# Corrected qbittorrent-p2p-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent-p2p-service
+  # ako nije u defaultu, ovjde dodaj namespace
+  # namespace: default
+spec:
+  type: LoadBalancer
+  selector:
+    app: qbittorrent # provjeri jel es ovako zove app
+  ports:
+    # TCP DIO
+    - name: tcp-p2p
+      protocol: TCP
+      port: 30681
+      targetPort: 30681
+    # UDP DIO
+    - name: udp-p2p
+      protocol: UDP
+      port: 30681
+      targetPort: 30681

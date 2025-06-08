@@ -1,0 +1,75 @@
+# openspeedtest.yaml
+
+# 1. Deployment za web server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openspeedtest-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openspeedtest
+  template:
+    metadata:
+      labels:
+        app: openspeedtest
+    spec:
+      containers:
+      - name: openspeedtest-app
+        # Oficijalni image
+        image: openspeedtest/latest
+        ports:
+        - containerPort: 3000 # njegov default port
+        - containerPort: 3001
+
+---
+
+# 2. Servis internal
+apiVersion: v1
+kind: Service
+metadata:
+  name: openspeedtest-service
+spec:
+  type: ClusterIP
+  selector:
+    app: openspeedtest
+  ports:
+    # http prema ingressu
+  - name: http
+    protocol: TCP
+    port: 3000
+    targetPort: 3000
+
+---
+
+# 3. ingress i TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openspeedtest-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-cloudflare-issuer"
+    # max body size z aupload
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    # proxy off za bolje i realnije rezultate
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  tls:
+  - hosts:
+    - speedtest.nhukovic.com
+    secretName: speedtest-tls-secret
+  rules:
+  - host: "speedtest.nhukovic.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            # Pointa na novi servis
+            name: openspeedtest-service
+            port:
+              # i njegov port
+              number: 3000

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: default-headers
+  namespace: ingress-nginx # mora biti u istom namespace kao i ingress kontorler
+data:
+  # novin nacin za deny frameDeny
+  X-Frame-Options: "SAMEORIGIN"
+  # zamjena za contentTypeNosniff
+  X-Content-Type-Options: "nosniff"
+  # zamjena za browserXssFilter
+  X-XSS-Protection: "1; mode=block"

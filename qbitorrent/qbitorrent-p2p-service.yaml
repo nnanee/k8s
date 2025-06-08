@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent-p2p-service
+spec:
+  # Trazis od Kubernetiesa da mu uz pomoc metallb dodijeli externu IP
+  type: LoadBalancer
+  # IMPORTANT: This selector must match the label of your qBittorrent pod
+  selector:
+    app: qbittorrent # <-- ovo promijeni, mora da match app=IME, ako ne znas > kubectl get pods --show-labels
+  ports:
+    - name: tcp-p2p
+      protocol: TCP
+      port: 30681       # Externi port
+      targetPort: 30681 # Interni port u kontejneru
+    - name: udp-p2p
+      protocol: UDP
+      port: 30681       # Externi port
+      targetPort: 30681 # Interni port u kontejneru
