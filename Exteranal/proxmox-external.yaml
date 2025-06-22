@@ -1,0 +1,69 @@
+# proxmox-external.yaml
+
+# Part 1: The "headless" Service za Proxmox
+# definiramo servis i port koji ce biti interno exposan
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxmox-external-service
+  namespace: default
+spec:
+  ports:
+  - name: http-pve-ui  # proxmox virtual enviroment
+    port: 8006
+    targetPort: 8006
+
+---
+
+# Part 2: The Endpoints object
+# IP i port servera
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: proxmox-external-service # mora matchati se naravno
+  namespace: default
+subsets:
+  - addresses:
+    - ip: "192.168.50.2"
+    ports:
+    - name: http-pve-ui
+      port: 8006
+
+---
+
+# Part 3: Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: proxmox-ingress
+  namespace: default
+  annotations:
+    # Cert-Manager for automatic SSL
+    cert-manager.io/cluster-issuer: "letsencrypt-cloudflare-issuer"
+
+    # NGINX Ingress Configuration
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    
+    # Standard Security Headers
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "15552000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    nginx.ingress.kubernetes.io/hsts-preload: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - proxmox.nhukovic.com
+    secretName: proxmox-tls-secret # Cert-Manager
+  rules:
+  - host: "proxmox.nhukovic.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            # pointa na servis gore
+            name: proxmox-external-service
+            port:
+              number: 8006

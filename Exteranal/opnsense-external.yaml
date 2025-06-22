@@ -1,0 +1,70 @@
+# opnsense-external.yaml
+
+# Part 1: "Headless" servis
+apiVersion: v1
+kind: Service
+metadata:
+  name: opnsense-external-service
+  namespace: default
+spec:
+  ports:
+  - name: http-ui
+    port: 80
+    targetPort: 80
+
+---
+
+# Part 2: The Endpoints pointing na OPNsense
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: opnsense-external-service # mora matchat gore servis
+  namespace: default
+subsets:
+  - addresses:
+    - ip: "192.168.50.1"
+    ports:
+    - name: http-ui
+      port: 80
+
+---
+
+# Part 3: ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opnsense-ingress
+  namespace: default
+  annotations:
+    # Cert-Manager
+    cert-manager.io/cluster-issuer: "letsencrypt-cloudflare-issuer"
+
+    # NGINX Ingress Configuration
+    # kazemo nginxu da koristi http da komunicira sa opnsensom
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    
+    # RECOMMENDED FIX za Rebind Protection (zamjena za snippet)
+    nginx.ingress.kubernetes.io/upstream-vhost: "router.nhukovic.com"
+
+    # Standard Security Headers
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "15552000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    nginx.ingress.kubernetes.io/hsts-preload: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - router.nhukovic.com
+    secretName: opnsense-tls-secret # Cert-Manager
+  rules:
+  - host: "router.nhukovic.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: opnsense-external-service
+            port:
+              number: 80
