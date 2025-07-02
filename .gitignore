@@ -1,0 +1,12 @@
+# Ignore all private keys
+*.key
+*.private
+
+# Ignore all OpenVPN client configuration files
+*.ovpn
+
+# Ignore local environment files
+.env
+
+# Ignore Kubernetes config files
+kubeconfig
